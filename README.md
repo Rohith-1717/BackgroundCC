@@ -1,6 +1,6 @@
 # BackGroundCC
 
-BackgroundCC is a Linux user-space background data transfer service built to move bulk, delay-tolerant data while keeping latency low for foreground network traffic. It is a user-space re-derivation of LEDBAT++. The focus is not on maximizing throughput, but on making sure background transfers stay effectively invisible to interactive applications like web browsing, SSH, video calls, gaming, or remote desktops. BackgroundCC behaves as a lower-than-best-effort transport, using spare bandwidth when the network is idle and yielding smoothly and conservatively as soon as other traffic starts competing for capacity.
+BackgroundCC is a Linux user-space background data transfer service built to move bulk, delay-tolerant data while keeping latency low for foreground network traffic. It is a user-space re-derivation of LEDBAT++. The focus is on making sure background transfers stay effectively invisible to interactive applications like web browsing, SSH, video calls, gaming, or remote desktops. BackgroundCC uses spare bandwidth when the network is idle and yielding smoothly and conservatively as soon as other traffic starts competing for capacity.
 
 The congestion control logic in BackgroundCC is delay-based and inspired by LEDBAT and LEDBAT++, as described in RFC 6817 (https://datatracker.ietf.org/doc/html/rfc6817) and the LEDBAT++ experimental research draft (https://datatracker.ietf.org/doc/draft-irtf-iccrg-ledbat-plus-plus/). 
 
