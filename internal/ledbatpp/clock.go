@@ -2,12 +2,9 @@ package ledbatpp
 import "time"
 
 type Clock interface{
-	Now() time.Time
-	
-	Since(t time.Time) time.Duration
-	
-	After(d time.Duration) <-chan time.Time
-	
+	Now() time.Time	
+	Since(t time.Time) time.Duration	
+	After(d time.Duration) <-chan time.Time	
 }
 
 type MonotonicClock struct{}
