@@ -4,13 +4,13 @@ import "math"
 
 type Controller struct{
 	params Params
-	clock  Clock
+	clock Clock
 }
 
 func NewController(params Params, clock Clock) *Controller{
 	return &Controller{
 		params: params,
-		clock:  clock,
+		clock: clock,
 	}
 }
 
