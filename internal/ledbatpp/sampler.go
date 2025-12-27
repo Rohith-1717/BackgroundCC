@@ -1,9 +1,6 @@
 package ledbatpp
 
-import (
-	"time"
-	"backgroundcc/internal/pacing"
-)
+import "time"
 
 type Sample struct{
 	SendTime time.Time
@@ -12,13 +9,11 @@ type Sample struct{
 }
 
 type Sampler struct{
-	clock pacing.Clock
+	clock Clock
 }
 
-func NewSampler(clock pacing.Clock) *Sampler{
-	return &Sampler{
-		clock: clock,
-	}
+func NewSampler(clock Clock) *Sampler{
+	return &Sampler{clock: clock,}
 }
 
 func (s *Sampler) Observe(sendTime time.Time)(Sample, bool){
@@ -26,10 +21,12 @@ func (s *Sampler) Observe(sendTime time.Time)(Sample, bool){
 
 	if sendTime.After(now){
 		return Sample{}, false
-	}	
+	}
+
 	rtt := now.Sub(sendTime)
 	if rtt <= 0{
 		return Sample{}, false
 	}
-	return Sample{SendTime: sendTime, AckTime: now,RTT: rtt,}, true
+
+	return Sample{SendTime: sendTime,	AckTime: now, RTT: rtt,}, true
 }
