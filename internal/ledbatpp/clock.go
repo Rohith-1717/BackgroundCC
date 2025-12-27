@@ -1,4 +1,4 @@
-package pacing
+package ledbatpp
 import "time"
 
 type Clock interface{
