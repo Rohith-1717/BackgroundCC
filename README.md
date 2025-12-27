@@ -3,7 +3,9 @@
 BackgroundCC is a Linux user-space background data transfer service built to move bulk, delaytolerant data while keeping latency low for foreground network traffic. It is a user-space re derivation of LEDBAT++. The focus is on making sure background transfers stay effectively invisible to interactive applications like web browsing, SSH, video calls, gaming, or remote desktops. BackgroundCC uses spare bandwidth when the network is idle and yielding smoothly and conservatively as soon as other traffic starts competing for capacity.
 
 The congestion control logic in BackgroundCC is delay-based and inspired by LEDBAT and LEDBAT++, as described in:
+
 -RFC 6817 (https://datatracker.ietf.org/doc/html/rfc6817) 
+
 -LEDBAT++ experimental research draft (https://datatracker.ietf.org/doc/draft-irtf-iccrg-ledbat-plus-plus/). 
 
 Instead of relying mainly on packet loss, the sender continuously measures round-trip time (RTT) and keeps a dynamic baseline to estimate queueing delay. Rate adaptation is handled by a target-based control loop that increases the sending rate when queueing delay is low and backs off early as delay approaches or crosses the target. Packet loss is treated as a secondary safety signal rather than the main driver of congestion control.
