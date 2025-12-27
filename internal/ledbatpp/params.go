@@ -1,5 +1,4 @@
 package ledbatpp
-
 import "time"
 
 type Params struct{

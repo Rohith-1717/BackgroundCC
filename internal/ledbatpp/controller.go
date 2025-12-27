@@ -1,5 +1,4 @@
 package ledbatpp
-
 import "math"
 
 type Controller struct{

@@ -1,5 +1,4 @@
 package ledbatpp
-
 import "time"
 
 type State struct{

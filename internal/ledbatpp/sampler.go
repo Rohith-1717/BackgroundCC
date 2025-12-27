@@ -1,5 +1,4 @@
 package ledbatpp
-
 import "time"
 
 type Sample struct{
@@ -31,4 +30,4 @@ func (s *Sampler) Observe(sendTime time.Time)(Sample, bool){
 	return Sample{SendTime: sendTime,	AckTime: now, RTT: rtt,}, true
 }
 
-// This is to make sure that the delays that we observed make sense
+// This is to make sure that the RTTs that we observed make sense
