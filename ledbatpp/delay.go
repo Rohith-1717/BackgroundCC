@@ -28,15 +28,16 @@ func (d *DelayEstimator) Update(rtt time.Duration, now time.Time){
 
 func (d *DelayEstimator) expireOld(now time.Time){
 	baseCutoff := now.Add(-d.baseWindow)
-	currCutoff := now.Add(-d.currWindow)	
-	for i := 0; i < len(d.baseSamples); i++{
+	currCutoff := now.Add(-d.currWindow)
+	i := 0
+	for ; i < len(d.baseSamples); i++{
 		if d.baseSamples[i].ts.After(baseCutoff){
 			break
 		}
 	}
 	d.baseSamples = d.baseSamples[i:]
-	
-	for i = 0; i < len(d.currSamples); i++{
+	i = 0
+	for ; i < len(d.currSamples); i++{
 		if d.currSamples[i].ts.After(currCutoff){
 			break
 		}

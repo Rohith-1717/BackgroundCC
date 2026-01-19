@@ -37,8 +37,7 @@ func (c *Controller) Update(state *State){
 		
 		rateDelta = c.params.AdditiveIncrease*gain
 		state.Rate += rateDelta*dt
-	} 
-	else{
+	} else{
 		rateDelta = c.params.ProportionalDecrease*gain
 		state.Rate -= state.Rate*rateDelta*dt
 	}
