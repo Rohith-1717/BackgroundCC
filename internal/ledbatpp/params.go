@@ -5,14 +5,11 @@ type Params struct{
 	TargetDelay time.Duration
 	BaseDelayWindow time.Duration
 	CurrentDelayWindow time.Duration
-
 	AdditiveIncrease float64
 	ProportionalDecrease float64
 	MultiplicativeDecrease float64
-
 	MinRate float64
-	MaxRate float64
-
+	MaxRate float64 
 	StartupExitThreshold float64
 	SlowdownEnterThreshold float64
 }
