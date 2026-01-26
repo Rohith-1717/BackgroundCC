@@ -60,7 +60,7 @@ func (RT *ReliableTransport) HandleIncoming(Pkt *Packet, Addr *net.UDPAddr) {
 	case PacketTypeAck:
 		RT.HandleAck(Pkt.Ack)
 	case PacketTypeData:
-		RT.SendAck(Pkt.Seq, Addr)
+		RT.SendAck(Pkt.Seq, Pkt.Timestamp, Addr)
 	}
 }
 
@@ -70,12 +70,12 @@ func (RT *ReliableTransport) HandleAck(Ack uint64) {
 	RT.Mutex.Unlock()
 }
 
-func (RT *ReliableTransport) SendAck(Seq uint64, Addr *net.UDPAddr) {
+func (RT *ReliableTransport) SendAck(Seq uint64, Timestamp int64, Addr *net.UDPAddr) {
 	AckPkt := &Packet{
 		Type:      PacketTypeAck,
 		Seq:       0,
 		Ack:       Seq,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: Timestamp,
 		Payload:   nil,
 	}
 	_ = RT.UDP.Send(Addr, AckPkt)

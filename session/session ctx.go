@@ -12,7 +12,7 @@ import (
 type SessionState struct {
 	Mutex      sync.Mutex
 	LocalAddr  *net.UDPAddr
-	RemoteAddr *net.UDPAddr
+	RemoteAdr  *net.UDPAddr
 	Transport  *transport.ReliableTransport
 	Pacer      *pacing.Pacer
 	Controller *ledbatpp.Controller
@@ -24,14 +24,14 @@ type SessionState struct {
 
 func NewSessionState(
 	LocalAddr *net.UDPAddr,
-	RemoteAddr *net.UDPAddr,
+	RemoteAdr *net.UDPAddr,
 	Transport *transport.ReliableTransport,
 	Pacer *pacing.Pacer,
 	Controller *ledbatpp.Controller,
 ) *SessionState {
 	return &SessionState{
 		LocalAddr:  LocalAddr,
-		RemoteAddr: RemoteAddr,
+		RemoteAdr:  RemoteAdr,
 		Transport:  Transport,
 		Pacer:      Pacer,
 		Controller: Controller,
