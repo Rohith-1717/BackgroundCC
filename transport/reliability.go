@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"backgroundcc/ledbatpp"
 	"net"
 	"sync"
 	"time"
@@ -14,6 +15,10 @@ type SentPacket struct {
 
 type ReliableTransport struct {
 	UDP      *UDPTransport
+	Sampler  *ledbatpp.Sampler
+	Tracker  *ledbatpp.DelayTracker
+	Loss     *ledbatpp.Loss
+	State    *ledbatpp.State
 	Mutex    sync.Mutex
 	NextSeq  uint64
 	Unacked  map[uint64]*SentPacket
@@ -21,89 +26,108 @@ type ReliableTransport struct {
 	StopChan chan struct{}
 }
 
-func NewReliableTransport(UDP *UDPTransport) *ReliableTransport {
-	RT := &ReliableTransport{
-		UDP:      UDP,
+func NewReliableTransport(
+	udp *UDPTransport,
+	sampler *ledbatpp.Sampler,
+	tracker *ledbatpp.DelayTracker,
+	loss *ledbatpp.Loss,
+	state *ledbatpp.State,
+) *ReliableTransport {
+	rt := &ReliableTransport{
+		UDP:      udp,
+		Sampler:  sampler,
+		Tracker:  tracker,
+		Loss:     loss,
+		State:    state,
 		NextSeq:  1,
 		Unacked:  make(map[uint64]*SentPacket),
 		Timeout:  500 * time.Millisecond,
 		StopChan: make(chan struct{}),
 	}
-	go RT.RetransmitLoop()
-	return RT
+	go rt.RetransmitLoop()
+	return rt
 }
 
-func (RT *ReliableTransport) Send(Addr *net.UDPAddr, Payload []byte) error {
-	RT.Mutex.Lock()
-	Seq := RT.NextSeq
-	RT.NextSeq++
-	Pkt := &Packet{
+func (rt *ReliableTransport) Send(addr *net.UDPAddr, payload []byte) error {
+	rt.Mutex.Lock()
+	seq := rt.NextSeq
+	rt.NextSeq++
+	pkt := &Packet{
 		Type:      PacketTypeData,
-		Seq:       Seq,
-		Ack:       0,
+		Seq:       seq,
 		Timestamp: time.Now().UnixNano(),
-		Payload:   Payload,
+		Payload:   payload,
 	}
-
-	RT.Unacked[Seq] = &SentPacket{
-		Packet: Pkt,
-		Addr:   Addr,
+	rt.Unacked[seq] = &SentPacket{
+		Packet: pkt,
+		Addr:   addr,
 		SentAt: time.Now(),
 	}
-	RT.Mutex.Unlock()
-
-	return RT.UDP.Send(Addr, Pkt)
+	rt.Mutex.Unlock()
+	return rt.UDP.Send(addr, pkt)
 }
 
-func (RT *ReliableTransport) HandleIncoming(Pkt *Packet, Addr *net.UDPAddr) {
-	switch Pkt.Type {
+func (rt *ReliableTransport) HandleIncoming(pkt *Packet, addr *net.UDPAddr) {
+	switch pkt.Type {
 	case PacketTypeAck:
-		RT.HandleAck(Pkt.Ack)
+		rt.handleAck(pkt)
 	case PacketTypeData:
-		RT.SendAck(Pkt.Seq, Pkt.Timestamp, Addr)
+		rt.sendAck(pkt.Seq, pkt.Timestamp, addr)
 	}
 }
 
-func (RT *ReliableTransport) HandleAck(Ack uint64) {
-	RT.Mutex.Lock()
-	delete(RT.Unacked, Ack)
-	RT.Mutex.Unlock()
+func (rt *ReliableTransport) handleAck(pkt *Packet) {
+	var sendTime time.Time
+	var ok bool
+	rt.Mutex.Lock()
+	_, ok = rt.Unacked[pkt.Ack]
+	if ok {
+		delete(rt.Unacked, pkt.Ack)
+	}
+	rt.Mutex.Unlock()
+	if !ok {
+		return
+	}
+	sendTime = time.Unix(0, pkt.Timestamp)
+	sample, ok := rt.Sampler.Observe(sendTime)
+	if !ok {
+		return
+	}
+	rt.Tracker.OnRTTSample(sample.RTT)
 }
 
-func (RT *ReliableTransport) SendAck(Seq uint64, Timestamp int64, Addr *net.UDPAddr) {
-	AckPkt := &Packet{
+func (rt *ReliableTransport) sendAck(seq uint64, ts int64, addr *net.UDPAddr) {
+	ack := &Packet{
 		Type:      PacketTypeAck,
-		Seq:       0,
-		Ack:       Seq,
-		Timestamp: Timestamp,
-		Payload:   nil,
+		Ack:       seq,
+		Timestamp: ts,
 	}
-	_ = RT.UDP.Send(Addr, AckPkt)
+	_ = rt.UDP.Send(addr, ack)
 }
 
-func (RT *ReliableTransport) RetransmitLoop() {
-	Ticker := time.NewTicker(50 * time.Millisecond)
-	defer Ticker.Stop()
-
+func (rt *ReliableTransport) RetransmitLoop() {
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-Ticker.C:
-			Now := time.Now()
-			RT.Mutex.Lock()
-			for _, SP := range RT.Unacked {
-				if Now.Sub(SP.SentAt) >= RT.Timeout {
-					SP.SentAt = Now
-					_ = RT.UDP.Send(SP.Addr, SP.Packet)
+		case <-ticker.C:
+			now := time.Now()
+			rt.Mutex.Lock()
+			for _, sp := range rt.Unacked {
+				if now.Sub(sp.SentAt) >= rt.Timeout {
+					rt.Loss.OnLoss(rt.State)
+					sp.SentAt = now
+					_ = rt.UDP.Send(sp.Addr, sp.Packet)
 				}
 			}
-			RT.Mutex.Unlock()
-		case <-RT.StopChan:
+			rt.Mutex.Unlock()
+		case <-rt.StopChan:
 			return
 		}
 	}
 }
 
-func (RT *ReliableTransport) Close() error {
-	close(RT.StopChan)
-	return RT.UDP.Close()
+func (rt *ReliableTransport) Close() {
+	close(rt.StopChan)
+	_ = rt.UDP.Close()
 }

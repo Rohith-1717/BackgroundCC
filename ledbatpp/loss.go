@@ -1,34 +1,36 @@
 package ledbatpp
+
 import "time"
 
-type Loss struct{
-	params Params
-	clock Clock
+type Loss struct {
+	params   Params
+	clock    Clock
 	cooldown time.Duration
 }
 
-func NewLoss(params Params, clock Clock) *Loss{
+func NewLoss(params Params, clock Clock) *Loss {
 	return &Loss{
-		params: params,
-		clock: clock,
-		cooldown: 500*time.Millisecond,
+		params:   params,
+		clock:    clock,
+		cooldown: 500 * time.Millisecond,
 	}
 }
 
-func (l *Loss) OnLoss(state *State){
+func (l *Loss) OnLoss(state *State) {
+	now := l.clock.Now()
 	if state.InStartup {
 		return
 	}
-	if l.clock.Since(state.LastUpdate) < l.cooldown{
+	if now.Sub(state.LastLossTime) < l.cooldown {
 		return
 	}
-	if state.QueuingDelay < state.TargetDelay{
+	if state.QueuingDelay < state.TargetDelay {
 		return
 	}
 	state.Rate *= l.params.MultiplicativeDecrease
-	if state.Rate < l.params.MinRate{
+	if state.Rate < l.params.MinRate {
 		state.Rate = l.params.MinRate
 	}
 	state.InSlowdown = false
-	state.LastUpdate = l.clock.Now()
+	state.LastLossTime = now
 }
