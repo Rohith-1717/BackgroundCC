@@ -1,15 +1,49 @@
 # BackGroundCC
 
-BackgroundCC is a Linux user-space background data transfer service built to move bulk, delaytolerant data while keeping latency low for foreground network traffic. It is a user space re derivation of LEDBAT++. The focus is on making sure background transfers stay effectively invisible to interactive applications like web browsing, SSH, video calls, gaming, or remote desktops. BackgroundCC uses spare bandwidth when the network is idle and yielding smoothly and conservatively as soon as other traffic starts competing for capacity.
+BackgroundCC is a Linux user space background data transfer service designed to move bulk, delay tolerant data without interfering with interactive network traffic.
+It is a user space re derivation of LEDBAT++. The primary objective is simple: background transfers should remain invisible to the user experience. Applications such as web browsing, SSH, gaming, VoIP, video conferencing, and remote desktops must not experience noticeable latency increases because of background data movement.
+BackgroundCC uses spare bandwidth when the network is idle and yields smoothly and conservatively as soon as competing traffic appears.
 
-The congestion control logic in BackgroundCC is delay-based and inspired by LEDBAT and LEDBAT++, as described in:
+## Design Approach
+The system is built around a latency first philosophy.
+Instead of aggressively chasing throughput, BackgroundCC protects foreground traffic. It assumes that bulk transfers are less time sensitive than interactive flows and therefore must adapt quickly and gracefully under congestion.
 
--RFC 6817 (https://datatracker.ietf.org/doc/html/rfc6817) 
+The design is guided by the following principles:
 
--LEDBAT++ experimental research draft (https://datatracker.ietf.org/doc/draft-irtf-iccrg-ledbat-plus-plus/). 
+### Latency protection
+Interactive applications must remain responsive even during large background transfers.
 
-Instead of relying mainly on packet loss, the sender continuously measures round-trip time (RTT) and keeps a dynamic baseline to estimate queueing delay. Rate adaptation is handled by a target-based control loop that increases the sending rate when queueing delay is low and backs off early as delay approaches or crosses the target. Packet loss is treated as a secondary safety signal rather than the main driver of congestion control.
+### Delay based congestion control
+Queueing delay is treated as the primary congestion signal rather than packet loss.
 
-BackgroundCC adopts several key ideas from LEDBAT++, including reduced gain, multiplicative decrease under sustained congestion, periodic slowdowns to refresh baseline delay estimates, and constrained startup behavior. Packet transmission is strictly time-paced to avoid micro bursts that could temporarily fill queues or distort delay measurements. The system runs entirely in user space and uses UDP, with application-level mechanisms for reliability, sequencing, and retransmission.
+### User space simplicity
+The entire system runs in user space using UDP. No kernel modifications are required.
 
-Beyond following the core principles of LEDBAT and LEDBAT++, BackgroundCC adds certain choices to make it work better on real networks. RTT samples are filtered to deal with jitter from Wi-Fi, scheduling noise, and ACK compression, and congestion decisions are based on persistent delay trends rather than individual samples. When delay measurements become unreliable, the controller falls back to a conservative safe mode that prioritizes protecting foreground traffic. These additions are implementation level extensions to keep the system stable and predictable under noisy and heterogeneous network conditions.
+### Stability under real networks
+The controller is engineered to handle jitter, wireless noise, scheduling delays, and heterogeneous paths.
+
+### Research grounded but practical
+The implementation follows LEDBAT++ principles while incorporating practical extensions necessary for real deployments.
+
+## Delay Based Congestion Model
+The congestion controller is built around a target queueing delay model.
+
+Let:
+
+RTT(t) = measured round trip time at time t
+BaseDelay = minimum RTT observed over a sliding window
+QueueDelay(t) = RTT(t) − BaseDelay
+
+BaseDelay approximates propagation delay without queueing. QueueDelay represents congestion induced buffering.
+A configurable target delay T is defined. Typical values are in the range of 25 to 100 ms depending on configuration.
+
+### The control objective is:
+QueueDelay(t) is approx. T
+The error term is:
+
+e(t) = T − QueueDelay(t)
+
+- If e(t) > 0
+The queue is under target → increase rate.
+- If e(t) < 0
+The queue exceeds target → decrease rate.
