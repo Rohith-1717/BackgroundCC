@@ -10,15 +10,11 @@ Instead of aggressively chasing throughput, BackgroundCC protects foreground tra
 
 The design is guided by the following principles:
 
-Latency protection: Interactive applications must remain responsive even during large background transfers.
-
-Delay based congestion control: Queueing delay is treated as the primary congestion signal rather than packet loss.
-
-User space simplicity: The entire system runs in user space using UDP. No kernel modifications are required.
-
-Stability under real networks: The controller is engineered to handle jitter, wireless noise, scheduling delays, and heterogeneous paths.
-
-Research grounded but practical: The implementation follows LEDBAT++ principles while incorporating practical extensions necessary for real deployments.
+- Latency protection: Interactive applications must remain responsive even during large background transfers.
+- Delay based congestion control: Queueing delay is treated as the primary congestion signal rather than packet loss.
+- User space simplicity: The entire system runs in user space using UDP. No kernel modifications are required.
+- Stability under real networks: The controller is engineered to handle jitter, wireless noise, scheduling delays, and heterogeneous paths.
+- Research grounded but practical: The implementation follows LEDBAT++ principles while incorporating practical extensions necessary for real deployments.
 
 ## Delay Based Congestion Model
 The congestion controller is built around a target queueing delay model.
@@ -42,3 +38,24 @@ e(t) = T − QueueDelay(t)
 The queue is under target → increase rate.
 - If e(t) < 0
 The queue exceeds target → decrease rate.
+
+## Window and rate update rule
+
+BackgroundCC maintains a congestion window cwnd measured in packets.
+
+- A simplified additive update rule is:
+cwnd = cwnd + G*(e(t)/T)
+where G is a gain parameter controlling aggressiveness.
+
+- This can also be expressed as:
+delta_cwnd proportional to (T − QueueDelay)/T
+
+When delay is far below target, the increase is larger.
+As delay approaches T, the increase becomes smaller.
+
+Under sustained congestion:
+
+cwnd = cwnd * beta
+where 0 < beta < 1.
+
+This multiplicative decrease ensures fast yielding when congestion persists.
