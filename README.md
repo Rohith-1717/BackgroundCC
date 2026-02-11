@@ -43,12 +43,12 @@ The queue exceeds target → decrease rate.
 
 BackgroundCC maintains a congestion window cwnd measured in packets.
 
-- A simplified additive update rule is:
+### A simplified additive update rule is:
   
 cwnd = cwnd + G*(e(t)/T)
 where G is a gain parameter controlling aggressiveness.
 
-This can also be expressed as:
+### This can also be expressed as:
   
 delta_cwnd proportional to (T − QueueDelay)/T
 
