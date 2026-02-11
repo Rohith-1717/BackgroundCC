@@ -10,20 +10,15 @@ Instead of aggressively chasing throughput, BackgroundCC protects foreground tra
 
 The design is guided by the following principles:
 
-### Latency protection
-Interactive applications must remain responsive even during large background transfers.
+Latency protection: Interactive applications must remain responsive even during large background transfers.
 
-### Delay based congestion control
-Queueing delay is treated as the primary congestion signal rather than packet loss.
+Delay based congestion control: Queueing delay is treated as the primary congestion signal rather than packet loss.
 
-### User space simplicity
-The entire system runs in user space using UDP. No kernel modifications are required.
+User space simplicity: The entire system runs in user space using UDP. No kernel modifications are required.
 
-### Stability under real networks
-The controller is engineered to handle jitter, wireless noise, scheduling delays, and heterogeneous paths.
+Stability under real networks: The controller is engineered to handle jitter, wireless noise, scheduling delays, and heterogeneous paths.
 
-### Research grounded but practical
-The implementation follows LEDBAT++ principles while incorporating practical extensions necessary for real deployments.
+Research grounded but practical: The implementation follows LEDBAT++ principles while incorporating practical extensions necessary for real deployments.
 
 ## Delay Based Congestion Model
 The congestion controller is built around a target queueing delay model.
