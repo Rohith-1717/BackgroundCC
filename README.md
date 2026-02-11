@@ -52,12 +52,9 @@ where G is a gain parameter controlling aggressiveness.
   
 delta_cwnd proportional to (T − QueueDelay)/T
 
-When delay is far below target, the increase is larger.
-As delay approaches T, the increase becomes smaller.
+When delay is far below target, the increase is larger. As delay approaches T, the increase becomes smaller.
 
-Under sustained congestion:
-
-cwnd = cwnd * beta
+- Under sustained congestion:
+  cwnd = cwnd * beta
 where 0 < beta < 1.
-
 This multiplicative decrease ensures fast yielding when congestion persists.
