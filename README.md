@@ -35,9 +35,9 @@ The error term is:
 e(t) = T − QueueDelay(t)
 
 - If e(t) > 0
-The queue is under target → increase rate.
+The queue is under target -> increase rate.
 - If e(t) < 0
-The queue exceeds target → decrease rate.
+The queue exceeds target -> decrease rate.
 
 ## Window and rate update rule
 
