@@ -13,6 +13,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "validate" {
+		runValidate()
+		return
+	}
 	if len(os.Args) < 4 {
 		log.Fatalf("usage: %s <local_addr> <remote_addr> <file>", os.Args[0])
 	}
@@ -35,8 +39,7 @@ func main() {
 	clock := ledbatpp.NewMonotonicClock()
 	params := ledbatpp.DefaultParams()
 	state := ledbatpp.NewState(
-		params.TargetDelay,
-		params.MinRate,
+		params.TargetDelay, params.MinRate,
 		clock.Now(),
 	)
 	controller := ledbatpp.NewController(params, clock)
@@ -56,8 +59,8 @@ func main() {
 		loss,
 		state,
 	)
-
 	pacer := pacing.NewPacer(clock)
+
 	sess := session.NewSessionState(
 		nil,
 		remoteAddr,
