@@ -58,3 +58,7 @@ When delay is far below target, the increase is larger. As delay approaches T, t
   cwnd = cwnd * beta
 where 0 < beta < 1.
 This multiplicative decrease ensures fast yielding when congestion persists.
+
+## Reference
+LEDBAT: https://datatracker.ietf.org/doc/html/rfc6817
+LEDBAT++: https://datatracker.ietf.org/doc/draft-irtf-iccrg-ledbat-plus-plus/
