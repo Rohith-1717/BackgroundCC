@@ -1,10 +1,12 @@
 package ledbatpp
 import "time"
 
-type Clock interface{
-	Now() time.Time	
-	Since(t time.Time) time.Duration	
-	After(d time.Duration) <-chan time.Time	
+// This is our clock abstraction
+
+type Clock interface{  // the operations clock must support
+	Now() time.Time	// current time
+	Since(t time.Time) time.Duration // how much time has passed since t
+	After(d time.Duration) <-chan time.Time	// for waking up after some delay
 }
 
 type MonotonicClock struct{}
