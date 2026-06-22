@@ -19,6 +19,7 @@ type ReliableTransport struct {
 	Tracker  *ledbatpp.DelayTracker
 	Loss     *ledbatpp.Loss
 	State    *ledbatpp.State
+	Receiver *Receiver
 	Mutex    sync.Mutex
 	NextSeq  uint64
 	Unacked  map[uint64]*SentPacket
@@ -32,6 +33,7 @@ func NewReliableTransport(
 	tracker *ledbatpp.DelayTracker,
 	loss *ledbatpp.Loss,
 	state *ledbatpp.State,
+	receiver *Receiver,
 ) *ReliableTransport {
 	rt := &ReliableTransport{
 		UDP:      udp,
@@ -39,16 +41,22 @@ func NewReliableTransport(
 		Tracker:  tracker,
 		Loss:     loss,
 		State:    state,
+		Receiver: receiver,
 		NextSeq:  1,
 		Unacked:  make(map[uint64]*SentPacket),
 		Timeout:  500 * time.Millisecond,
 		StopChan: make(chan struct{}),
 	}
+
 	go rt.RetransmitLoop()
+
 	return rt
 }
 
-func (rt *ReliableTransport) Send(addr *net.UDPAddr, payload []byte) error {
+func (rt *ReliableTransport) Send(
+	addr *net.UDPAddr,
+	payload []byte,
+) error {
 	rt.Mutex.Lock()
 	seq := rt.NextSeq
 	rt.NextSeq++
@@ -63,16 +71,64 @@ func (rt *ReliableTransport) Send(addr *net.UDPAddr, payload []byte) error {
 		Addr:   addr,
 		SentAt: time.Now(),
 	}
+
 	rt.Mutex.Unlock()
 	return rt.UDP.Send(addr, pkt)
 }
 
-func (rt *ReliableTransport) HandleIncoming(pkt *Packet, addr *net.UDPAddr) {
+func (rt *ReliableTransport) SendEOF(
+	addr *net.UDPAddr,
+) error {
+
+	rt.Mutex.Lock()
+	seq := rt.NextSeq
+	rt.NextSeq++
+
+	pkt := &Packet{
+		Type:      PacketTypeEOF,
+		Seq:       seq,
+		Timestamp: time.Now().UnixNano(),
+	}
+
+	rt.Unacked[seq] = &SentPacket{
+		Packet: pkt,
+		Addr:   addr,
+		SentAt: time.Now(),
+	}
+
+	rt.Mutex.Unlock()
+	return rt.UDP.Send(addr, pkt)
+}
+
+func (rt *ReliableTransport) HandleIncoming(
+	pkt *Packet,
+	addr *net.UDPAddr,
+) {
+
 	switch pkt.Type {
 	case PacketTypeAck:
 		rt.handleAck(pkt)
 	case PacketTypeData:
-		rt.sendAck(pkt.Seq, pkt.Timestamp, addr)
+
+		if rt.Receiver != nil {
+			_ = rt.Receiver.HandleData(pkt)
+		}
+		rt.sendAck(
+			pkt.Seq,
+			pkt.Timestamp,
+			addr,
+		)
+
+	case PacketTypeEOF:
+		if rt.Receiver != nil {
+			_ = rt.Receiver.HandleEOF()
+		}
+
+		rt.sendAck(
+			pkt.Seq,
+			pkt.Timestamp,
+			addr,
+		)
 	}
 }
 
@@ -88,15 +144,22 @@ func (rt *ReliableTransport) handleAck(pkt *Packet) {
 	if !ok {
 		return
 	}
+
 	sendTime = time.Unix(0, pkt.Timestamp)
+
 	sample, ok := rt.Sampler.Observe(sendTime)
 	if !ok {
 		return
 	}
+
 	rt.Tracker.OnRTTSample(sample.RTT)
 }
 
-func (rt *ReliableTransport) sendAck(seq uint64, ts int64, addr *net.UDPAddr) {
+func (rt *ReliableTransport) sendAck(
+	seq uint64,
+	ts int64,
+	addr *net.UDPAddr,
+) {
 	ack := &Packet{
 		Type:      PacketTypeAck,
 		Ack:       seq,
@@ -106,7 +169,10 @@ func (rt *ReliableTransport) sendAck(seq uint64, ts int64, addr *net.UDPAddr) {
 }
 
 func (rt *ReliableTransport) RetransmitLoop() {
-	ticker := time.NewTicker(50 * time.Millisecond)
+
+	ticker := time.NewTicker(
+		50 * time.Millisecond,
+	)
 	defer ticker.Stop()
 	for {
 		select {
@@ -115,12 +181,19 @@ func (rt *ReliableTransport) RetransmitLoop() {
 			rt.Mutex.Lock()
 			for _, sp := range rt.Unacked {
 				if now.Sub(sp.SentAt) >= rt.Timeout {
-					rt.Loss.OnLoss(rt.State)
+					rt.Loss.OnLoss(
+						rt.State,
+					)
 					sp.SentAt = now
-					_ = rt.UDP.Send(sp.Addr, sp.Packet)
+					_ = rt.UDP.Send(
+						sp.Addr,
+						sp.Packet,
+					)
 				}
 			}
+
 			rt.Mutex.Unlock()
+
 		case <-rt.StopChan:
 			return
 		}
