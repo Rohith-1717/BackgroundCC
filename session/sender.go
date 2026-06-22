@@ -32,22 +32,30 @@ func (s *Sender) Run() error {
 		default:
 		}
 		now := s.Session.Pacer.Clk.Now()
-
-		// So here we are asking the algo to look at the new network delay state
-		// and it will update the sending rate
-
 		s.Session.Startup.Update(
 			s.Session.State,
 			s.Session.Params,
 			now,
 		)
-		s.Session.Slowdown.MaybeEnter(s.Session.State)
-		s.Session.Controller.Update(s.Session.State)
-		s.Session.Slowdown.Apply(s.Session.State)
-		s.Session.Pacer.UpdateRate(s.Session.State.Rate)
-
-		if !s.Session.Pacer.CanSend(now, s.PktSize) {
-			next := s.Session.Pacer.NextSendTime(s.PktSize)
+		s.Session.Slowdown.MaybeEnter(
+			s.Session.State,
+		)
+		s.Session.Controller.Update(
+			s.Session.State,
+		)
+		s.Session.Slowdown.Apply(
+			s.Session.State,
+		)
+		s.Session.Pacer.UpdateRate(
+			s.Session.State.Rate,
+		)
+		if !s.Session.Pacer.CanSend(
+			now,
+			s.PktSize,
+		) {
+			next := s.Session.Pacer.NextSendTime(
+				s.PktSize,
+			)
 			if !next.IsZero() {
 				sleep := next.Sub(now)
 				if sleep > 0 {
@@ -56,9 +64,18 @@ func (s *Sender) Run() error {
 			}
 			continue
 		}
+
 		n, err := s.Reader.Read(buf)
 		if err != nil {
 			if err == io.EOF {
+				if err := s.Session.Transport.SendEOF(
+					s.Session.RemoteAdr,
+				); err != nil {
+					return err
+				}
+				time.Sleep(
+					500 * time.Millisecond,
+				)
 				s.Session.Close()
 				return nil
 			}
@@ -66,10 +83,21 @@ func (s *Sender) Run() error {
 		}
 
 		payload := make([]byte, n)
-		copy(payload, buf[:n])
-		if err := s.Session.Transport.Send(s.Session.RemoteAdr, payload); err != nil {
+		copy(
+			payload,
+			buf[:n],
+		)
+
+		if err := s.Session.Transport.Send(
+			s.Session.RemoteAdr,
+			payload,
+		); err != nil {
 			return err
 		}
-		s.Session.Pacer.OnSend(now, n)
+
+		s.Session.Pacer.OnSend(
+			now,
+			n,
+		)
 	}
 }
