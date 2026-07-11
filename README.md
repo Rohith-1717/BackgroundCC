@@ -59,6 +59,47 @@ When delay is far below target, the increase is larger. As delay approaches T, t
 where 0 < beta < 1.
 This multiplicative decrease ensures fast yielding when congestion persists.
 
+
+## How to Run
+ 
+BackgroundCC is a two-sided tool: one machine must run in `receive` mode before the other starts `send`ing, since the receiver is what performs reassembly and generates the ACKs the sender's congestion control depends on.
+ 
+### Build
+ 
+```bash
+git clone https://github.com/Rohith-1717/BackgroundCC.git
+cd BackgroundCC/backgroundcc
+go build -o bgcc .
+```
+ 
+### Run a transfer
+ 
+**On the receiving machine**, start listening first:
+ 
+```bash
+./bgcc receive <local_ip>:<port> <output_file>
+```
+ 
+Example:
+```bash
+./bgcc receive 0.0.0.0:9000 received_file.dat
+```
+- `0.0.0.0:9000` — local address/port to bind and listen on (any interface, port 9000)
+- `received_file.dat` — path where the reassembled file will be written
+**On the sending machine**, once the receiver is up:
+ 
+```bash
+./bgcc send <local_ip>:<port> <remote_ip>:<port> <file_to_send>
+```
+ 
+Example:
+```bash
+./bgcc send 0.0.0.0:9001 192.168.1.50:9000 myfile.dat
+```
+- `0.0.0.0:9001` — sender's own local bind address/port
+- `192.168.1.50:9000` — the receiver's address (must match what it bound to)
+- `myfile.dat` — the file to transfer
+
 ## Reference
 LEDBAT: https://datatracker.ietf.org/doc/html/rfc6817
 
